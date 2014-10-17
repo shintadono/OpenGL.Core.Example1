@@ -5,7 +5,6 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
-using OpenGL.Core;
 using OpenGLHelper;
 using Win32.WGL;
 
@@ -36,6 +35,12 @@ namespace OpenGL.Core.Example1
 			Console.WriteLine(e.Error.ToString());
 		}
 
+		bool updateProjectionMatrix=true;
+		private void openGLControl1_Resize(object sender, EventArgs e)
+		{
+			updateProjectionMatrix=true;
+		}
+
 		private void Form1_FormClosing(object sender, FormClosingEventArgs e)
 		{
 			openGLControl1.PreDestoryCleanUp(); // Calls Destroy
@@ -54,160 +59,52 @@ namespace OpenGL.Core.Example1
 		int framesInThisSecond=10;
 
 		// Object rotation states
+		double heading=0, pitch=0;
 		double fRotationAngleCube=0.0f, fRotationAnglePyramid=0.0f;
 		double fCubeRotationSpeed=0.0f, fPyramidRotationSpeed=0.0f;
+		bool showGeom=true;
+
+		// A TextOverlayRenderer
+		TextOverlayRenderer textOverlay;
+
+		// A skybox
+		SkyBox skyBox;
 
 		// Names of texture shaders and uniforms
-		uint shaderVertexTextured, shaderFragmentTextured, programTextured;
+		ShaderProgram programTextured;
 		int uniformIndexProjectionMatrixTextured, uniformIndexModelViewMatrixTextured, uniformIndexSamplerTextured;
-
-		// Names of text overlay shaders and uniforms
-		uint shaderVertexTextOverlay, shaderFragmentTextOverlay, programTextOverlay;
-		int uniformIndexProjectionMatrixTextOverlay, uniformIndexModelViewMatrixTextOverlay, uniformIndexSamplerTextOverlay, uniformIndexColorTextOverlay;
-
-		// Matrices and transfer arrays
-		Matrix4d projectionMatrix=new Matrix4d(), modelViewMatrix=new Matrix4d();
-		float[] projectionMatrixArray=new float[16], modelViewMatrixArray=new float[16];
 
 		// Names for textures, samplers, buffers and array objects
 		uint[] uiSamplers, uiTextures, uiVBO, uiVAO;
-
-		// a font
-		OpenGLFont oglFont;
 		#endregion
 
 		#region Constants for texture usage
-		const int textureFont=0;
-		const int textureGold=1;
-		const int textureSilver=2;
+		const int textureGold=0;
+		const int textureSilver=1;
 		#endregion
 
 		#region Constants for sampler usage
-		const int rectangleTextureSampler=0;
-		const int nlTextureSampler=1;
-		const int llTextureSampler=2;
+		const int nlTextureSampler=0;
+		const int llTextureSampler=1;
 		#endregion
 
 		#region Constants Geometry Buffers and Objects
 		const int geomtryVBO=0;
 		const int geomtryVAO=0;
-		const int textOverlayVBO=1;
-		const int textOverlayVAO=1;
-		#endregion
-
-		#region Geometry
-		Tuple3fs[] vCubeVertices=new Tuple3fs[]
-		{
-			// Front face
-			new Tuple3fs(-0.5f, 0.5f, 0.5f), new Tuple3fs(0.5f, 0.5f, 0.5f), new Tuple3fs(0.5f, -0.5f, 0.5f), new Tuple3fs(0.5f, -0.5f, 0.5f), new Tuple3fs(-0.5f, -0.5f, 0.5f), new Tuple3fs(-0.5f, 0.5f, 0.5f),
-			// Back face
-			new Tuple3fs(0.5f, 0.5f, -0.5f), new Tuple3fs(-0.5f, 0.5f, -0.5f), new Tuple3fs(-0.5f, -0.5f, -0.5f), new Tuple3fs(-0.5f, -0.5f, -0.5f), new Tuple3fs(0.5f, -0.5f, -0.5f), new Tuple3fs(0.5f, 0.5f, -0.5f),
-			// Left face
-			new Tuple3fs(-0.5f, 0.5f, -0.5f), new Tuple3fs(-0.5f, 0.5f, 0.5f), new Tuple3fs(-0.5f, -0.5f, 0.5f), new Tuple3fs(-0.5f, -0.5f, 0.5f), new Tuple3fs(-0.5f, -0.5f, -0.5f), new Tuple3fs(-0.5f, 0.5f, -0.5f),
-			// Right face
-			new Tuple3fs(0.5f, 0.5f, 0.5f), new Tuple3fs(0.5f, 0.5f, -0.5f), new Tuple3fs(0.5f, -0.5f, -0.5f), new Tuple3fs(0.5f, -0.5f, -0.5f), new Tuple3fs(0.5f, -0.5f, 0.5f), new Tuple3fs(0.5f, 0.5f, 0.5f),
-			// Top face
-			new Tuple3fs(-0.5f, 0.5f, -0.5f), new Tuple3fs(0.5f, 0.5f, -0.5f), new Tuple3fs(0.5f, 0.5f, 0.5f), new Tuple3fs(0.5f, 0.5f, 0.5f), new Tuple3fs(-0.5f, 0.5f, 0.5f), new Tuple3fs(-0.5f, 0.5f, -0.5f),
-			// Bottom face
-			new Tuple3fs(-0.5f, -0.5f, 0.5f), new Tuple3fs(0.5f, -0.5f, 0.5f), new Tuple3fs(0.5f, -0.5f, -0.5f), new Tuple3fs(0.5f, -0.5f, -0.5f), new Tuple3fs(-0.5f, -0.5f, -0.5f),new Tuple3fs(-0.5f, -0.5f, 0.5f),
-		};
-
-		Tuple2fs[] vCubeTexCoords=new Tuple2fs[] { new Tuple2fs(0.0f, 1.0f), new Tuple2fs(1.0f, 1.0f), new Tuple2fs(1.0f, 0.0f), new Tuple2fs(1.0f, 0.0f), new Tuple2fs(0.0f, 0.0f), new Tuple2fs(0.0f, 1.0f) };
-
-		Tuple3fs[] vPyramidVertices=new Tuple3fs[]
-		{
-			// Front face
-			new Tuple3fs(0.0f, 0.5f, 0.0f), new Tuple3fs(-0.5f, -0.5f, 0.5f), new Tuple3fs(0.5f, -0.5f, 0.5f),
-			// Back face
-			new Tuple3fs(0.0f, 0.5f, 0.0f), new Tuple3fs(0.5f, -0.5f, -0.5f), new Tuple3fs(-0.5f, -0.5f, -0.5f),
-			// Left face
-			new Tuple3fs(0.0f, 0.5f, 0.0f), new Tuple3fs(-0.5f, -0.5f, -0.5f), new Tuple3fs(-0.5f, -0.5f, 0.5f),
-			// Right face
-			new Tuple3fs(0.0f, 0.5f, 0.0f), new Tuple3fs(0.5f, -0.5f, 0.5f), new Tuple3fs(0.5f, -0.5f, -0.5f)
-		};
-
-		Tuple2fs[] vPyramidTexCoords=new Tuple2fs[] { new Tuple2fs(0.5f, 1.0f), new Tuple2fs(0.0f, 0.0f), new Tuple2fs(1.0f, 0.0f) };
-
-		Tuple3fs[] vGround=new Tuple3fs[]
-		{
-			new Tuple3fs(-50, -10, -50), new Tuple3fs(50, -10, -50), new Tuple3fs(50, -10, 50), new Tuple3fs(50, -10, 50), new Tuple3fs(-50, -10, 50), new Tuple3fs(-50, -10, -50)
-		};
 		#endregion
 
 		bool Init()
 		{
-			#region Load Textured shader
-			string vert=File.ReadAllText("Shaders\\Textured.vert");
-			string frag=File.ReadAllText("Shaders\\Textured.frag");
+			#region Load shader programs and get uniform locations
+			programTextured=new ShaderProgram(File.ReadAllText("Shaders\\Textured.vert"), File.ReadAllText("Shaders\\Textured.frag"));
+			uniformIndexProjectionMatrixTextured=programTextured.GetUniformLocation("projectionMatrix");
+			uniformIndexModelViewMatrixTextured=programTextured.GetUniformLocation("modelViewMatrix");
+			uniformIndexSamplerTextured=programTextured.GetUniformLocation("sampler");
 
-			// Load shaders and create shader program
-			int iCompilationStatus;
+			programTextured.UseProgram();
 
-			shaderVertexTextured=gl.CreateShader(glShaderType.VERTEX_SHADER);
-			gl.ShaderSource(shaderVertexTextured, vert);
-			gl.CompileShader(shaderVertexTextured);
-			gl.GetShaderi(shaderVertexTextured, glShaderParameter.COMPILE_STATUS, out iCompilationStatus);
-			if(iCompilationStatus==0)
-				return false;
-
-			shaderFragmentTextured=gl.CreateShader(glShaderType.FRAGMENT_SHADER);
-			gl.ShaderSource(shaderFragmentTextured, frag);
-			gl.CompileShader(shaderFragmentTextured);
-			gl.GetShaderi(shaderFragmentTextured, glShaderParameter.COMPILE_STATUS, out iCompilationStatus);
-			if(iCompilationStatus==0)
-				return false;
-
-			programTextured=gl.CreateProgram();
-			gl.AttachShader(programTextured, shaderVertexTextured);
-			gl.AttachShader(programTextured, shaderFragmentTextured);
-
-			gl.LinkProgram(programTextured);
-
-			int iLinkStatus;
-			gl.GetProgrami(programTextured, glProgramParameter.LINK_STATUS, out iLinkStatus);
-			if(iLinkStatus==0)
-				return false;
-			#endregion
-
-			#region Load Text Overlay shader
-			string vertTO=File.ReadAllText("Shaders\\TextOverlay.vert");
-			string fragTO=File.ReadAllText("Shaders\\TextOverlay.frag");
-
-			// Load shaders and create shader program
-			shaderVertexTextOverlay=gl.CreateShader(glShaderType.VERTEX_SHADER);
-			gl.ShaderSource(shaderVertexTextOverlay, vertTO);
-			gl.CompileShader(shaderVertexTextOverlay);
-			gl.GetShaderi(shaderVertexTextOverlay, glShaderParameter.COMPILE_STATUS, out iCompilationStatus);
-			if(iCompilationStatus==0)
-				return false;
-
-			shaderFragmentTextOverlay=gl.CreateShader(glShaderType.FRAGMENT_SHADER);
-			gl.ShaderSource(shaderFragmentTextOverlay, fragTO);
-			gl.CompileShader(shaderFragmentTextOverlay);
-			gl.GetShaderi(shaderFragmentTextOverlay, glShaderParameter.COMPILE_STATUS, out iCompilationStatus);
-			if(iCompilationStatus==0)
-				return false;
-
-			programTextOverlay=gl.CreateProgram();
-			gl.AttachShader(programTextOverlay, shaderVertexTextOverlay);
-			gl.AttachShader(programTextOverlay, shaderFragmentTextOverlay);
-
-			gl.LinkProgram(programTextOverlay);
-
-			gl.GetProgrami(programTextOverlay, glProgramParameter.LINK_STATUS, out iLinkStatus);
-			if(iLinkStatus==0)
-				return false;
-			#endregion
-
-			#region Get locations of shader uniforms
-			uniformIndexProjectionMatrixTextured=gl.GetUniformLocation(programTextured, "projectionMatrix");
-			uniformIndexModelViewMatrixTextured=gl.GetUniformLocation(programTextured, "modelViewMatrix");
-			uniformIndexSamplerTextured=gl.GetUniformLocation(programTextured, "sampler");
-
-			uniformIndexProjectionMatrixTextOverlay=gl.GetUniformLocation(programTextOverlay, "projectionMatrix");
-			uniformIndexModelViewMatrixTextOverlay=gl.GetUniformLocation(programTextOverlay, "modelViewMatrix");
-			uniformIndexSamplerTextOverlay=gl.GetUniformLocation(programTextOverlay, "sampler");
-			uniformIndexColorTextOverlay=gl.GetUniformLocation(programTextOverlay, "textColor");
+			// Tell shader which texture unit to use
+			gl.Uniform1i(uniformIndexSamplerTextured, 0);
 			#endregion
 
 			// reserve some texture names
@@ -227,16 +124,6 @@ namespace OpenGL.Core.Example1
 			gl.GenerateMipmap(glTextureTarget.TEXTURE_2D);
 			#endregion
 
-			#region Load font texture
-			oglFont=new OpenGLFont("Segoe UI", 30, FontStyle.Regular, new Tuple<ushort, ushort>(32, 126));
-
-			gl.BindTexture(glTextureTarget.TEXTURE_RECTANGLE, uiTextures[textureFont]);
-			gl.PixelStorei(glPixelStoreParameter.UNPACK_ALIGNMENT, 1);
-			gl.TexImage2D(glTexture2DProxyTarget.TEXTURE_RECTANGLE, 0, glInternalFormat.RED, oglFont.Width, oglFont.Height, 0, glPixelFormat.RED, glPixelDataType.UNSIGNED_BYTE, oglFont.bits);
-
-			oglFont.bits=null; // free memory
-			#endregion
-
 			// reserve some sampler names
 			uiSamplers=gl.GenSamplers(50);
 
@@ -246,14 +133,7 @@ namespace OpenGL.Core.Example1
 
 			gl.SamplerParameteri(uiSamplers[llTextureSampler], glTextureParameter.TEXTURE_MAG_FILTER, glFilter.LINEAR);
 			gl.SamplerParameteri(uiSamplers[llTextureSampler], glTextureParameter.TEXTURE_MIN_FILTER, glFilter.LINEAR_MIPMAP_LINEAR);
-
-			gl.SamplerParameteri(uiSamplers[rectangleTextureSampler], glTextureParameter.TEXTURE_WRAP_S, glTextureWrapMode.CLAMP_TO_EDGE); // we need this line for rectangle textures to work
-			gl.SamplerParameteri(uiSamplers[rectangleTextureSampler], glTextureParameter.TEXTURE_WRAP_T, glTextureWrapMode.CLAMP_TO_EDGE); // we need this line for rectangle textures to work
-			gl.SamplerParameteri(uiSamplers[rectangleTextureSampler], glTextureParameter.TEXTURE_MAG_FILTER, glFilter.NEAREST);
-			gl.SamplerParameteri(uiSamplers[rectangleTextureSampler], glTextureParameter.TEXTURE_MIN_FILTER, glFilter.NEAREST);
 			#endregion
-
-			var err=gl.GetError();
 
 			gl.ClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
@@ -297,8 +177,16 @@ namespace OpenGL.Core.Example1
 			gl.VertexAttribPointer(1, 2, glVertexAttribType.FLOAT, false, Marshal.SizeOf(typeof(Tuple3fs))+Marshal.SizeOf(typeof(Tuple2fs)), Marshal.SizeOf(typeof(Tuple3fs)));
 			#endregion
 
+			skyBox=new SkyBox();
+			skyBox.LoadTextures("Textures\\SkyBox", LoadTextureFromFile);
+
+			//textOverlay=new TextOverlayRenderer(new OpenGLFont("Segoe UI", 30, FontStyle.Regular, new Tuple<ushort, ushort>(32, 126)));
+			textOverlay=new TextOverlayRenderer();
+
 			gl.Enable(glCapability.DEPTH_TEST);
 			gl.ClearDepth(1.0);
+
+			updateProjectionMatrix=true;
 
 			return true;
 		}
@@ -334,124 +222,124 @@ namespace OpenGL.Core.Example1
 			Text=string.Format("FPS: {0}", framesInLastSecond);
 			#endregion
 
+			#region Update Projection Matrix
+			if(updateProjectionMatrix)
+			{
+				textOverlay.SetProjectionMatrix(Matrix4d.OrthoMatrix(0, width, 0, height, -10, 10).ToFloatArrayColumnMajor());
+
+				double near=0.01, far=10000;
+				double top=near*Math.Tan(45*D2R/2);
+				float[] projectionMatrix=Matrix4d.FrustumMatrixSymmetric(top*width/height, top, near, far).ToFloatArrayColumnMajor();
+
+				skyBox.SetProjectionMatrix(projectionMatrix);
+
+				programTextured.UseProgram();
+				gl.UniformMatrix4fv(uniformIndexProjectionMatrixTextured, 1, false, projectionMatrix);
+
+				updateProjectionMatrix=false;
+			}
+			#endregion
+
 			// We just clear color
 			gl.Clear(glBufferMask.COLOR_BUFFER_BIT|glBufferMask.DEPTH_BUFFER_BIT);
 
-			gl.UseProgram(programTextured);
-
-			#region Projection Matrix
-			double near=0.01;
-			double far=10000;
-			double top=near*Math.Tan(45*D2R/2);
-			projectionMatrix.SetFrustumMatrixSymmetric(top*width/height, top, near, far);
-
-			projectionMatrix.GetElements(projectionMatrixArray);
-			gl.UniformMatrix4fv(uniformIndexProjectionMatrixTextured, 1, true, projectionMatrixArray);
+			#region Make camera matrix containing only rotation (not translation)
+			Matrix4d cameraMatrix=Matrix4d.RotXMatrix(-90*D2R); // look north (Z-Up)
+			cameraMatrix*=Matrix4d.RotXMatrix(-pitch);
+			cameraMatrix*=Matrix4d.RotZMatrix(-heading);
 			#endregion
 
-			#region ViewMatrix (Not Loaded, just build)
-			Tuple3fs origin=new Tuple3fs(0, 12, 27);
-			Tuple3fs target=new Tuple3fs(0, 0, 0);
-			Tuple3fs up=new Tuple3fs(0, 1, 0);
+			skyBox.Draw(cameraMatrix.ToFloatArrayColumnMajor());
 
-			Tuple3fs dir=~(origin-target);
-			Tuple3fs side=~(up^dir);
-			up=~(dir^side);
+			// Finish camera matrix with translation
+			cameraMatrix*=Matrix4d.TranslationMatrix(0, 50, 0);
 
-			modelViewMatrix.SetRows(side, up, dir);
-			modelViewMatrix*=Matrix4d.TranslationMatrix(target-origin);
-			#endregion
+			// Model is in Y-Up system
+			Matrix4d modelViewMatrix=cameraMatrix*Matrix4d.RotXMatrix(90*D2R);
 
 			#region Render geometry
-			// Activate texture unit and set texture and sampler
-			gl.ActiveTexture(glTextureUnit.TEXTURE0);
-			gl.BindTexture(glTextureTarget.TEXTURE_2D, uiTextures[textureGold]);
-			gl.BindSampler(0, uiSamplers[nlTextureSampler]);
+			if(showGeom)
+			{
+				// Activate texture unit and set texture and sampler
+				gl.ActiveTexture(glTextureUnit.TEXTURE0);
+				gl.BindTexture(glTextureTarget.TEXTURE_2D, uiTextures[textureGold]);
+				gl.BindSampler(0, uiSamplers[nlTextureSampler]);
 
-			// Tell shader which texture unit to use
-			gl.Uniform1i(uniformIndexSamplerTextured, 0);
+				// Set vertex array object for the next draws
+				gl.BindVertexArray(uiVAO[geomtryVAO]);
 
-			// Set vertex array object for the next draws
-			gl.BindVertexArray(uiVAO[geomtryVAO]);
+				programTextured.UseProgram();
 
-			// Rendering of cube
-			Matrix4d mCurrent=modelViewMatrix*Matrix4d.TranslationMatrix(-8, 0, 0)*Matrix4d.ScaleMatrix(10, 10, 10)*Matrix4d.RotXMatrix(fRotationAngleCube);
-			gl.UniformMatrix4fv(uniformIndexModelViewMatrixTextured, 1, false, mCurrent.ToFloatArrayColumnMajor());
-			gl.DrawArrays(glDrawMode.TRIANGLES, 0, 36);
+				// Rendering of cube
+				Matrix4d mCurrent=modelViewMatrix*Matrix4d.TranslationMatrix(-8, 0, 0)*Matrix4d.ScaleMatrix(10, 10, 10)*Matrix4d.RotXMatrix(fRotationAngleCube);
+				gl.UniformMatrix4fv(uniformIndexModelViewMatrixTextured, 1, false, mCurrent.ToFloatArrayColumnMajor());
+				gl.DrawArrays(glDrawMode.TRIANGLES, 0, 36);
 
-			// Lets set another sampler - watch the behaviour of the texel of the different objects.
-			gl.BindSampler(0, uiSamplers[llTextureSampler]);
+				// Lets set another sampler - watch the behaviour of the texel of the different objects.
+				gl.BindSampler(0, uiSamplers[llTextureSampler]);
 
-			// Rendering of pyramid
-			mCurrent=modelViewMatrix*Matrix4d.TranslationMatrix(8, 0, 0)*Matrix4d.ScaleMatrix(10, 10, 10)*Matrix4d.RotYMatrix(fRotationAnglePyramid);
-			gl.UniformMatrix4fv(uniformIndexModelViewMatrixTextured, 1, false, mCurrent.ToFloatArrayColumnMajor());
-			gl.DrawArrays(glDrawMode.TRIANGLES, 36, 12);
+				// Rendering of pyramid
+				mCurrent=modelViewMatrix*Matrix4d.TranslationMatrix(8, 0, 0)*Matrix4d.ScaleMatrix(10, 10, 10)*Matrix4d.RotYMatrix(fRotationAnglePyramid);
+				gl.UniformMatrix4fv(uniformIndexModelViewMatrixTextured, 1, false, mCurrent.ToFloatArrayColumnMajor());
+				gl.DrawArrays(glDrawMode.TRIANGLES, 36, 12);
 
-			// Render ground
-			gl.BindTexture(glTextureTarget.TEXTURE_2D, uiTextures[textureSilver]);
+				// Render ground
+				gl.BindTexture(glTextureTarget.TEXTURE_2D, uiTextures[textureSilver]);
 
-			gl.BindSampler(0, uiSamplers[llTextureSampler]);
+				gl.BindSampler(0, uiSamplers[llTextureSampler]);
 
-			gl.UniformMatrix4fv(uniformIndexModelViewMatrixTextured, 1, false, modelViewMatrix.ToFloatArrayColumnMajor());
-			gl.DrawArrays(glDrawMode.TRIANGLES, 48, 6);
+				gl.UniformMatrix4fv(uniformIndexModelViewMatrixTextured, 1, false, modelViewMatrix.ToFloatArrayColumnMajor());
+				gl.DrawArrays(glDrawMode.TRIANGLES, 48, 6);
+			}
 			#endregion
 
 			#region Render text overlay
-			gl.UseProgram(programTextOverlay);
-
 			gl.Enable(glCapability.BLEND);
 			gl.BlendFunc(glBlendFuncFactor.SRC_ALPHA, glBlendFuncFactor.ONE_MINUS_SRC_ALPHA);
-			gl.BindTexture(glTextureTarget.TEXTURE_RECTANGLE, uiTextures[textureFont]);
-
-			gl.Uniform1i(uniformIndexSamplerTextOverlay, 0);
-			gl.BindSampler(0, uiSamplers[rectangleTextureSampler]);
-
-			#region Ortho matrix for text overlay in screen space coordinate
-			projectionMatrix.SetOrthoMatrix(0, width, 0, height, -10, 10);
-
-			projectionMatrix.GetElements(projectionMatrixArray);
-			gl.UniformMatrix4fv(uniformIndexProjectionMatrixTextOverlay, 1, true, projectionMatrixArray);
-			#endregion
 
 			#region Text using absolute screen space coordinates
-			gl.Uniform4f(uniformIndexColorTextOverlay, 0, 0.7f, 0, 1); // green
+			textOverlay.SetColor(0, 0.6f, 0, 1); // green
 
-			modelViewMatrix.SetIdentity(); // no transformation
-			gl.UniformMatrix4fv(uniformIndexModelViewMatrixTextOverlay, 1, false, modelViewMatrix.ToFloatArrayColumnMajor());
-
-			DrawText(Text, (int)30, (int)height/2, OpenGLFont.AnchorPlacement.CenterLeft); // Draw the text 30 pixel from the left and half the screen down from the top
+			textOverlay.DrawText(Text, (int)1, (int)height-1, OpenGLFont.AnchorPlacement.TopLeft); // Draw the text in top left corner
 			#endregion
 
 			#region Text placed and rotated with modelview martix
-			gl.Uniform4f(uniformIndexColorTextOverlay, 1, 0, 0, 1); // red
+			textOverlay.SetColor(1, 0, 0, 1); // red
+			modelViewMatrix=Matrix4d.TranslationMatrix((int)width/2, (int)height/2, 1)*Matrix4d.RotZMatrix(fRotationAnglePyramid);
 
-			// move to screen center and rotate
-			modelViewMatrix=Matrix4d.TranslationMatrix(width/2, height/2, 1)*Matrix4d.RotZMatrix(fRotationAnglePyramid);
-			gl.UniformMatrix4fv(uniformIndexModelViewMatrixTextOverlay, 1, false, modelViewMatrix.ToFloatArrayColumnMajor());
-
-			DrawText(Text+" Rotating", OpenGLFont.AnchorPlacement.Center); // no absolute offsets
+			textOverlay.DrawText(Text+" Rotating", modelViewMatrix.ToFloatArrayColumnMajor(), OpenGLFont.AnchorPlacement.Center); // no absolute offsets
 			#endregion
-
 			#endregion
 
 			#region Object state machine
-			if(wasUp) fCubeRotationSpeed-=0.001;
-			if(wasDown) fCubeRotationSpeed+=0.001;
-			if(wasRight) fPyramidRotationSpeed+=0.001;
-			if(wasLeft) fPyramidRotationSpeed-=0.001;
+			if(wasUp) pitch+=0.01;
+			if(wasDown) pitch-=0.01;
+			if(wasRight) heading-=0.01;
+			if(wasLeft) heading+=0.01;
 
 			wasUp=wasDown=wasRight=wasLeft=false;
 
+			if(wasF1)
+			{
+				if(fCubeRotationSpeed==0) fCubeRotationSpeed=-0.001;
+				else if(fCubeRotationSpeed<0) fCubeRotationSpeed=0.001;
+				else if(fCubeRotationSpeed>0) fCubeRotationSpeed=0;
+			}
+
+			if(wasF2)
+			{
+				if(fPyramidRotationSpeed==0) fPyramidRotationSpeed=-0.001;
+				else if(fPyramidRotationSpeed<0) fPyramidRotationSpeed=0.001;
+				else if(fPyramidRotationSpeed>0) fPyramidRotationSpeed=0;
+			}
+
+			// toggle geometry visibility
+			if(wasF3) showGeom=!showGeom;
+
+			wasF1=wasF2=wasF3=false;
+
 			fRotationAngleCube+=fCubeRotationSpeed;
 			fRotationAnglePyramid+=fPyramidRotationSpeed;
-
-			// do more events here
-			if(wasF3)
-			{
-				// e.g. toggle something
-			}
-	
-			wasF1=wasF2=wasF3=false;
 			#endregion
 
 			openGLControl1.Invalidate();
@@ -462,13 +350,8 @@ namespace OpenGL.Core.Example1
 		{
 			if(init&&!badInit&&!e.Error)
 			{
-				// Uninit shaders
-				gl.UseProgram(0);
-				gl.DetachShader(programTextured, shaderVertexTextured);
-				gl.DetachShader(programTextured, shaderFragmentTextured);
-				gl.DeleteShader(shaderVertexTextured);
-				gl.DeleteShader(shaderFragmentTextured);
-				gl.DeleteProgram(programTextured);
+				// Uninit and delete shader programs
+				programTextured.Delete();
 
 				// Unbind current vertex array
 				gl.BindVertexArray(0);
@@ -489,6 +372,9 @@ namespace OpenGL.Core.Example1
 				// Delete texture names and sampler names
 				if(uiTextures!=null) gl.DeleteTextures(uiTextures.Length, uiTextures);
 				if(uiSamplers!=null) gl.DeleteSamplers(uiSamplers.Length, uiSamplers);
+
+				skyBox.Delete();
+				textOverlay.Delete();
 
 				glErrorCode err=gl.GetError();
 				if(err!=glErrorCode.NO_ERROR)
@@ -514,38 +400,6 @@ namespace OpenGL.Core.Example1
 			}
 		}
 		#endregion
-
-		public void DrawText(string msg, OpenGLFont.AnchorPlacement anchor=OpenGLFont.AnchorPlacement.BottomLeft)
-		{
-			List<int> vboArray=oglFont.BuildDrawBuffer(msg, anchor);
-
-			gl.BindVertexArray(uiVAO[2]);
-
-			gl.BindBuffer(glBufferTarget.ARRAY_BUFFER, uiVBO[2]);
-			gl.BufferData(glBufferTarget.ARRAY_BUFFER, vboArray.Count*sizeof(int), vboArray.ToArray(), glBufferUsage.DYNAMIC_DRAW);
-			gl.EnableVertexAttribArray(0);
-			gl.VertexAttribPointer(0, 2, glVertexAttribType.INT, false, sizeof(int)*4, 0);
-			gl.EnableVertexAttribArray(1);
-			gl.VertexAttribPointer(1, 2, glVertexAttribType.INT, false, sizeof(int)*4, sizeof(int)*2);
-
-			gl.DrawArrays(glDrawMode.TRIANGLES, 0, vboArray.Count/4); // each element(Point) has x, y, u and v
-		}
-
-		public void DrawText(string msg, int posX, int posY, OpenGLFont.AnchorPlacement anchor=OpenGLFont.AnchorPlacement.BottomLeft)
-		{
-			List<int> vboArray=oglFont.BuildDrawBuffer(msg, posX, posY, out posX, anchor);
-
-			gl.BindVertexArray(uiVAO[2]);
-
-			gl.BindBuffer(glBufferTarget.ARRAY_BUFFER, uiVBO[2]);
-			gl.BufferData(glBufferTarget.ARRAY_BUFFER, vboArray.Count*sizeof(int), vboArray.ToArray(), glBufferUsage.DYNAMIC_DRAW);
-			gl.EnableVertexAttribArray(0);
-			gl.VertexAttribPointer(0, 2, glVertexAttribType.INT, false, sizeof(int)*4, 0);
-			gl.EnableVertexAttribArray(1);
-			gl.VertexAttribPointer(1, 2, glVertexAttribType.INT, false, sizeof(int)*4, sizeof(int)*2);
-
-			gl.DrawArrays(glDrawMode.TRIANGLES, 0, vboArray.Count/4); // each element(Point) has x, y, u and v
-		}
 
 		public static byte[] LoadTextureFromFile(string filename, out int width, out int height, out glPixelFormat pixelformat)
 		{
@@ -590,7 +444,14 @@ namespace OpenGL.Core.Example1
 			img.Dispose();
 			img=null;
 
-			return ret;
+			// Flip image to opengl line order
+			int lw=width*(pixelformat==glPixelFormat.BGR?3:4);
+
+			byte[] retFlipped=new byte[ret.Length];
+
+			for(int i=0; i<height; i++) Buffer.BlockCopy(ret, i*lw, retFlipped, (height-i-1)*lw, lw);
+
+			return retFlipped;
 		}
 	}
 }

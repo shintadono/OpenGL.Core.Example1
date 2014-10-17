@@ -43,6 +43,7 @@
 			this.openGLControl1.Destroy += new Win32.WGL.OpenGLControl.DestroyEventHandler(this.openGLControl1_Destroy);
 			this.openGLControl1.Paint += new System.Windows.Forms.PaintEventHandler(this.openGLControl1_Paint);
 			this.openGLControl1.KeyDown += new System.Windows.Forms.KeyEventHandler(this.openGLControl1_KeyDown);
+			this.openGLControl1.Resize += new System.EventHandler(this.openGLControl1_Resize);
 			// 
 			// Form1
 			// 
