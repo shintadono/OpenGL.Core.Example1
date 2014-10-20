@@ -180,6 +180,9 @@ namespace OpenGL.Core.Example1
 			skyBox=new SkyBox();
 			skyBox.LoadTextures("Textures\\SkyBox", LoadTextureFromFile);
 
+			skyBox.SetSunModeAndDefaultSunColor(0);
+			skyBox.SetSunPostion(0, (float)-Math.Cos(35*D2R), (float)Math.Sin(35*D2R)); // South 35° above the horizon
+
 			//textOverlay=new TextOverlayRenderer(new OpenGLFont("Segoe UI", 30, FontStyle.Regular, new Tuple<ushort, ushort>(32, 126)));
 			textOverlay=new TextOverlayRenderer();
 
