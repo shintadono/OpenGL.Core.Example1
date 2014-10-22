@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace OpenGLHelper
+namespace OpenGL.Helper
 {
 	public class Matrix4d
 	{

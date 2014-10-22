@@ -5,7 +5,7 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
-using OpenGLHelper;
+using OpenGL.Helper;
 using Win32.WGL;
 
 namespace OpenGL.Core.Example1
@@ -257,10 +257,21 @@ namespace OpenGL.Core.Example1
 
 			if(badInit)
 			{
-				gl.ClearColor(0.5f, 0.7f, 1, 1);
+				gl.ClearColor(0.5f, 0.8f, 1, 1);
 				gl.Clear(glBufferMask.COLOR_BUFFER_BIT|glBufferMask.DEPTH_BUFFER_BIT);
 
-				// TODO Render Info
+				// Draw message without drawing (no shader)
+				gl.Enable(glCapability.SCISSOR_TEST);
+
+				gl.ClearColor(1, 0, 0, 1);
+
+				int scaleX=1, scaleY=1;
+				int offsetX=scaleX, offsetY=openGLControl1.Height-6*scaleY; // need 6 units(scaled pixel) form the top
+
+				ScissorRenderer.DrawText("Error: Initializing OpenGL.", offsetX, offsetY, scaleX, scaleY);
+
+				gl.Disable(glCapability.SCISSOR_TEST);
+
 				return;
 			}
 			#endregion

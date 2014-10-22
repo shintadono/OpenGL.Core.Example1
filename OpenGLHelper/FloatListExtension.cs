@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace OpenGLHelper
+namespace OpenGL.Helper
 {
 	public static class FloatListExtension
 	{

@@ -1,4 +1,4 @@
-﻿using OpenGLHelper;
+﻿using OpenGL.Helper;
 
 namespace OpenGL.Core.Example1
 {

@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 
-namespace OpenGLHelper
+namespace OpenGL.Helper
 {
 	[StructLayout(LayoutKind.Sequential, Pack=1)]
 	public struct Tuple2fs
