@@ -94,10 +94,10 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="LICENSE" />
-    <None Include="Shaders\TextOverlay.frag">
+    <None Include="Shaders\OutLine.frag">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Include="Shaders\TextOverlay.vert">
+    <None Include="Shaders\OutLine.vert">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Include="Shaders\Textured.frag">

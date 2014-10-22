@@ -23,6 +23,24 @@ namespace OpenGL.Core.Example1
 
 		static Tuple2fs[] vCubeTexCoords=new Tuple2fs[] { new Tuple2fs(0.0f, 1.0f), new Tuple2fs(1.0f, 1.0f), new Tuple2fs(1.0f, 0.0f), new Tuple2fs(1.0f, 0.0f), new Tuple2fs(0.0f, 0.0f), new Tuple2fs(0.0f, 1.0f) };
 
+		static Tuple3fs[] vCubeOutLineVertices=new Tuple3fs[]
+		{
+			new Tuple3fs(0.5f, 0.5f, 0.5f), new Tuple3fs(-0.5f, 0.5f, 0.5f),
+			new Tuple3fs(-0.5f, 0.5f, 0.5f), new Tuple3fs(-0.5f, -0.5f, 0.5f),
+			new Tuple3fs(-0.5f, -0.5f, 0.5f), new Tuple3fs(0.5f, -0.5f, 0.5f),
+			new Tuple3fs(0.5f, -0.5f, 0.5f), new Tuple3fs(0.5f, 0.5f, 0.5f),
+
+			new Tuple3fs(0.5f, 0.5f, -0.5f), new Tuple3fs(-0.5f, 0.5f, -0.5f),
+			new Tuple3fs(-0.5f, 0.5f, -0.5f), new Tuple3fs(-0.5f, -0.5f, -0.5f),
+			new Tuple3fs(-0.5f, -0.5f, -0.5f), new Tuple3fs(0.5f, -0.5f, -0.5f),
+			new Tuple3fs(0.5f, -0.5f, -0.5f), new Tuple3fs(0.5f, 0.5f, -0.5f),
+
+			new Tuple3fs(0.5f, 0.5f, 0.5f), new Tuple3fs(0.5f, 0.5f, -0.5f),
+			new Tuple3fs(-0.5f, 0.5f, 0.5f), new Tuple3fs(-0.5f, 0.5f, -0.5f),
+			new Tuple3fs(-0.5f, -0.5f, 0.5f), new Tuple3fs(-0.5f, -0.5f, -0.5f),
+			new Tuple3fs(0.5f, -0.5f, 0.5f), new Tuple3fs(0.5f, -0.5f, -0.5f),
+		};
+
 		static Tuple3fs[] vPyramidVertices=new Tuple3fs[]
 		{
 			// Front face

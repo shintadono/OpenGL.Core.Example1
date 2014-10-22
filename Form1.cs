@@ -62,7 +62,8 @@ namespace OpenGL.Core.Example1
 		double heading=0, pitch=0;
 		double fRotationAngleCube=0.0f, fRotationAnglePyramid=0.0f;
 		double fCubeRotationSpeed=0.0f, fPyramidRotationSpeed=0.0f;
-		bool showGeom=true;
+		float lineWidth=2;
+		bool showGeom=true, showCubeFilling=true;
 
 		// A TextOverlayRenderer
 		TextOverlayRenderer textOverlay;
@@ -73,6 +74,11 @@ namespace OpenGL.Core.Example1
 		// Names of texture shaders and uniforms
 		ShaderProgram programTextured;
 		int uniformIndexProjectionMatrixTextured, uniformIndexModelViewMatrixTextured, uniformIndexSamplerTextured;
+
+		// Names of OutLine shaders and uniforms
+		ShaderProgram programOutLine;
+		int uniformIndexProjectionMatrixOutLine, uniformIndexModelViewMatrixOutLine, uniformIndexViewPortSizeOutLine; // vert
+		int uniformIndexColorOutLine, uniformIndexLineStippleFactorOutLine, uniformIndexLineStipplePatternOutLine; // frag
 
 		// Names for textures, samplers, buffers and array objects
 		uint[] uiSamplers, uiTextures, uiVBO, uiVAO;
@@ -91,20 +97,48 @@ namespace OpenGL.Core.Example1
 		#region Constants Geometry Buffers and Objects
 		const int geomtryVBO=0;
 		const int geomtryVAO=0;
+
+		const int geomtryOutLineVBO=1;
+		const int geomtryOutLineVAO=1;
 		#endregion
 
 		bool Init()
 		{
 			#region Load shader programs and get uniform locations
-			programTextured=new ShaderProgram(File.ReadAllText("Shaders\\Textured.vert"), File.ReadAllText("Shaders\\Textured.frag"));
-			uniformIndexProjectionMatrixTextured=programTextured.GetUniformLocation("projectionMatrix");
-			uniformIndexModelViewMatrixTextured=programTextured.GetUniformLocation("modelViewMatrix");
-			uniformIndexSamplerTextured=programTextured.GetUniformLocation("sampler");
+			try
+			{
+				programTextured=new ShaderProgram(File.ReadAllText("Shaders\\Textured.vert"), File.ReadAllText("Shaders\\Textured.frag"));
+				uniformIndexProjectionMatrixTextured=programTextured.GetUniformLocation("projectionMatrix");
+				uniformIndexModelViewMatrixTextured=programTextured.GetUniformLocation("modelViewMatrix");
+				uniformIndexSamplerTextured=programTextured.GetUniformLocation("sampler");
 
-			programTextured.UseProgram();
+				programTextured.UseProgram();
 
-			// Tell shader which texture unit to use
-			gl.Uniform1i(uniformIndexSamplerTextured, 0);
+				// Tell shader which texture unit to use
+				gl.Uniform1i(uniformIndexSamplerTextured, 0);
+
+				programOutLine=new ShaderProgram(File.ReadAllText("Shaders\\OutLine.vert"), File.ReadAllText("Shaders\\OutLine.frag"));
+				uniformIndexProjectionMatrixOutLine=programOutLine.GetUniformLocation("projectionMatrix");
+				uniformIndexModelViewMatrixOutLine=programOutLine.GetUniformLocation("modelViewMatrix");
+				uniformIndexViewPortSizeOutLine=programOutLine.GetUniformLocation("viewPortSize");
+
+				uniformIndexColorOutLine=programOutLine.GetUniformLocation("color");
+				uniformIndexLineStippleFactorOutLine=programOutLine.GetUniformLocation("lineStippleFactor");
+				uniformIndexLineStipplePatternOutLine=programOutLine.GetUniformLocation("lineStipplePattern");
+
+				programOutLine.UseProgram();
+
+				// Tell shader which color to use
+				gl.Uniform4f(uniformIndexColorOutLine, 1, 1, 0, 1);
+
+				gl.Uniform1ui(uniformIndexLineStippleFactorOutLine, 2); // 0: no line stippling
+				//gl.Uniform1ui(uniformIndexLineStipplePatternOutLine, 0xAAAAAAAA); // 1010101010101010...
+				gl.Uniform1ui(uniformIndexLineStipplePatternOutLine, 0x72727272); // 0111001001110010...
+			}
+			catch
+			{
+				return false;
+			}
 			#endregion
 
 			// reserve some texture names
@@ -177,6 +211,21 @@ namespace OpenGL.Core.Example1
 			gl.VertexAttribPointer(1, 2, glVertexAttribType.FLOAT, false, Marshal.SizeOf(typeof(Tuple3fs))+Marshal.SizeOf(typeof(Tuple2fs)), Marshal.SizeOf(typeof(Tuple3fs)));
 			#endregion
 
+			vboArray.Clear();
+
+			#region Build vertex buffer object
+			for(int i=0; i<vCubeOutLineVertices.Length; i++) vboArray.Add(vCubeOutLineVertices[i]);
+			#endregion
+
+			#region Build vertex array object
+			gl.BindVertexArray(uiVAO[geomtryOutLineVAO]);
+
+			gl.BindBuffer(glBufferTarget.ARRAY_BUFFER, uiVBO[geomtryOutLineVBO]);
+			gl.BufferData(glBufferTarget.ARRAY_BUFFER, vboArray.Count*sizeof(float), vboArray.ToArray(), glBufferUsage.STATIC_DRAW);
+			gl.EnableVertexAttribArray(0); // position
+			gl.VertexAttribPointer(0, 3, glVertexAttribType.FLOAT, false, 0, 0);
+			#endregion
+
 			skyBox=new SkyBox();
 			skyBox.LoadTextures("Textures\\SkyBox", LoadTextureFromFile);
 
@@ -203,15 +252,18 @@ namespace OpenGL.Core.Example1
 				if(!Init()) badInit=true;
 			}
 
+			double width=openGLControl1.Width;
+			double height=openGLControl1.Height;
+
 			if(badInit)
 			{
+				gl.ClearColor(0.5f, 0.7f, 1, 1);
+				gl.Clear(glBufferMask.COLOR_BUFFER_BIT|glBufferMask.DEPTH_BUFFER_BIT);
+
 				// TODO Render Info
 				return;
 			}
 			#endregion
-
-			double width=openGLControl1.Width;
-			double height=openGLControl1.Height;
 
 			#region Framerate Stuff
 			DateTime now=DateTime.Now;
@@ -239,6 +291,10 @@ namespace OpenGL.Core.Example1
 				programTextured.UseProgram();
 				gl.UniformMatrix4fv(uniformIndexProjectionMatrixTextured, 1, false, projectionMatrix);
 
+				programOutLine.UseProgram();
+				gl.UniformMatrix4fv(uniformIndexProjectionMatrixOutLine, 1, false, projectionMatrix);
+				gl.Uniform2f(uniformIndexViewPortSizeOutLine, (float)width, (float)height);
+
 				updateProjectionMatrix=false;
 			}
 			#endregion
@@ -263,20 +319,39 @@ namespace OpenGL.Core.Example1
 			#region Render geometry
 			if(showGeom)
 			{
-				// Activate texture unit and set texture and sampler
-				gl.ActiveTexture(glTextureUnit.TEXTURE0);
-				gl.BindTexture(glTextureTarget.TEXTURE_2D, uiTextures[textureGold]);
-				gl.BindSampler(0, uiSamplers[nlTextureSampler]);
+				programTextured.UseProgram();
 
 				// Set vertex array object for the next draws
 				gl.BindVertexArray(uiVAO[geomtryVAO]);
 
-				programTextured.UseProgram();
+				#region Render ground
+				// Activate texture unit and set texture and sampler
+				gl.ActiveTexture(glTextureUnit.TEXTURE0);
+				gl.BindTexture(glTextureTarget.TEXTURE_2D, uiTextures[textureSilver]);
+				gl.BindSampler(0, uiSamplers[llTextureSampler]);
 
-				// Rendering of cube
+				gl.UniformMatrix4fv(uniformIndexModelViewMatrixTextured, 1, false, modelViewMatrix.ToFloatArrayColumnMajor());
+				gl.DrawArrays(glDrawMode.TRIANGLES, 48, 6);
+				#endregion
+
+				#region Cube and Pyramid
+				// Set texture and sampler
+				gl.BindTexture(glTextureTarget.TEXTURE_2D, uiTextures[textureGold]);
+				gl.BindSampler(0, uiSamplers[nlTextureSampler]);
+
+				// Rendering of cube (outline later, see below)
 				Matrix4d mCurrent=modelViewMatrix*Matrix4d.TranslationMatrix(-8, 0, 0)*Matrix4d.ScaleMatrix(10, 10, 10)*Matrix4d.RotXMatrix(fRotationAngleCube);
 				gl.UniformMatrix4fv(uniformIndexModelViewMatrixTextured, 1, false, mCurrent.ToFloatArrayColumnMajor());
+
+				// Since we can not offset our lines forward, we have to set the polygon backward. And factor of have the linewidth seems not so bad.
+				gl.Enable(glCapability.POLYGON_OFFSET_FILL);
+				gl.PolygonOffset(lineWidth/2, 1);
+
+				if(!showCubeFilling) gl.ColorMask(false, false, false, false);
 				gl.DrawArrays(glDrawMode.TRIANGLES, 0, 36);
+				if(!showCubeFilling) gl.ColorMask(true, true, true, true);
+
+				gl.Disable(glCapability.POLYGON_OFFSET_FILL);
 
 				// Lets set another sampler - watch the behaviour of the texel of the different objects.
 				gl.BindSampler(0, uiSamplers[llTextureSampler]);
@@ -284,15 +359,29 @@ namespace OpenGL.Core.Example1
 				// Rendering of pyramid
 				mCurrent=modelViewMatrix*Matrix4d.TranslationMatrix(8, 0, 0)*Matrix4d.ScaleMatrix(10, 10, 10)*Matrix4d.RotYMatrix(fRotationAnglePyramid);
 				gl.UniformMatrix4fv(uniformIndexModelViewMatrixTextured, 1, false, mCurrent.ToFloatArrayColumnMajor());
+
 				gl.DrawArrays(glDrawMode.TRIANGLES, 36, 12);
+				#endregion
 
-				// Render ground
-				gl.BindTexture(glTextureTarget.TEXTURE_2D, uiTextures[textureSilver]);
+				#region OutLines
+				programOutLine.UseProgram();
 
-				gl.BindSampler(0, uiSamplers[llTextureSampler]);
+				// Set vertex array object for the next draws
+				gl.BindVertexArray(uiVAO[geomtryOutLineVAO]);
 
-				gl.UniformMatrix4fv(uniformIndexModelViewMatrixTextured, 1, false, modelViewMatrix.ToFloatArrayColumnMajor());
-				gl.DrawArrays(glDrawMode.TRIANGLES, 48, 6);
+				mCurrent=modelViewMatrix*Matrix4d.TranslationMatrix(-8, 0, 0)*Matrix4d.ScaleMatrix(10, 10, 10)*Matrix4d.RotXMatrix(fRotationAngleCube);
+				gl.UniformMatrix4fv(uniformIndexModelViewMatrixOutLine, 1, false, mCurrent.ToFloatArrayColumnMajor());
+
+				gl.DepthFunc(glFunc.LEQUAL); // not relay necessary LESS should be ok, but to be on the save side let's add EQUAL
+				gl.Enable(glCapability.LINE_SMOOTH);
+				gl.Hint(glHintTarget.LINE_SMOOTH_HINT, glHintMode.NICEST);
+				gl.LineWidth(lineWidth);
+
+				gl.DrawArrays(glDrawMode.LINES, 0, 24);
+
+				gl.Disable(glCapability.LINE_SMOOTH);
+				gl.DepthFunc(glFunc.LESS);
+				#endregion
 			}
 			#endregion
 
@@ -338,8 +427,9 @@ namespace OpenGL.Core.Example1
 
 			// toggle geometry visibility
 			if(wasF3) showGeom=!showGeom;
+			if(wasF4) showCubeFilling=!showCubeFilling;
 
-			wasF1=wasF2=wasF3=false;
+			wasF1=wasF2=wasF3=wasF4=false;
 
 			fRotationAngleCube+=fCubeRotationSpeed;
 			fRotationAnglePyramid+=fPyramidRotationSpeed;
@@ -355,6 +445,7 @@ namespace OpenGL.Core.Example1
 			{
 				// Uninit and delete shader programs
 				programTextured.Delete();
+				programOutLine.Delete();
 
 				// Unbind current vertex array
 				gl.BindVertexArray(0);
@@ -386,7 +477,7 @@ namespace OpenGL.Core.Example1
 		}
 
 		#region Keyboard event handling
-		bool wasF1=false, wasF2=false, wasF3=false;
+		bool wasF1=false, wasF2=false, wasF3=false, wasF4=false;
 		bool wasUp=false, wasDown=false, wasRight=false, wasLeft=false;
 
 		private void openGLControl1_KeyDown(object sender, KeyEventArgs e)
@@ -400,6 +491,7 @@ namespace OpenGL.Core.Example1
 				case Keys.F1: wasF1=true; break;
 				case Keys.F2: wasF2=true; break;
 				case Keys.F3: wasF3=true; break;
+				case Keys.F4: wasF4=true; break;
 			}
 		}
 		#endregion
