@@ -1,4 +1,4 @@
-#version 400
+#version 330
 
 uniform vec4 color;
 uniform uint lineStippleFactor;
@@ -11,14 +11,14 @@ out vec4 outputColor;
 
 void main()
 {
-	if(lineStippleFactor==0) /* line stippling off? */
+	if(lineStippleFactor==uint(0)) /* line stippling off? */
 	{
 		outputColor=color;
 		return;
 	}
 
 	int bit=int(floor(distance(pos2d, startPos2d)/lineStippleFactor+0.5))%32;
-	if((lineStipplePattern&(1<<bit))==0) discard;
+	if((lineStipplePattern&uint(1<<bit))==uint(0)) discard;
 
 	outputColor=color;
 }

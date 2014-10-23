@@ -51,6 +51,7 @@ namespace OpenGL.Core.Example1
 		// OpenGL init states
 		bool init=false;
 		bool badInit=false;
+		List<string> initializationErrorMessage=new List<string>();
 
 		// Renderer speed stuff
 		DateTime startTime=DateTime.Now;
@@ -135,8 +136,9 @@ namespace OpenGL.Core.Example1
 				//gl.Uniform1ui(uniformIndexLineStipplePatternOutLine, 0xAAAAAAAA); // 1010101010101010...
 				gl.Uniform1ui(uniformIndexLineStipplePatternOutLine, 0x72727272); // 0111001001110010...
 			}
-			catch
+			catch(Exception ex)
 			{
+				initializationErrorMessage.AddRange(ex.ToString().Split(new char[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries));
 				return false;
 			}
 			#endregion
@@ -257,18 +259,24 @@ namespace OpenGL.Core.Example1
 
 			if(badInit)
 			{
-				gl.ClearColor(0.5f, 0.8f, 1, 1);
+				gl.ClearColor(0, 0, 0, 1);
 				gl.Clear(glBufferMask.COLOR_BUFFER_BIT|glBufferMask.DEPTH_BUFFER_BIT);
 
 				// Draw message without drawing (no shader)
 				gl.Enable(glCapability.SCISSOR_TEST);
 
-				gl.ClearColor(1, 0, 0, 1);
+				gl.ClearColor(0, 0.55f, 0, 1); // some friendly green
 
-				int scaleX=1, scaleY=1;
-				int offsetX=scaleX, offsetY=openGLControl1.Height-6*scaleY; // need 6 units(scaled pixel) form the top
+				int scaleX=2, scaleY=2;
+				int offsetX=0, offsetY=openGLControl1.Height-1-scaleY;
 
 				ScissorRenderer.DrawText("Error: Initializing OpenGL.", offsetX, offsetY, scaleX, scaleY);
+
+				foreach(string message in initializationErrorMessage)
+				{
+					offsetY-=8*scaleY;
+					ScissorRenderer.DrawText(message, offsetX, offsetY, scaleX, scaleY, 2);
+				}
 
 				gl.Disable(glCapability.SCISSOR_TEST);
 
