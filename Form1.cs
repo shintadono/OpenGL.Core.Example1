@@ -69,6 +69,10 @@ namespace OpenGL.Core.Example1
 		// A TextOverlayRenderer
 		TextOverlayRenderer textOverlay;
 
+		// A 22-Segments (16-Segments plus °"':;.,) Renderer
+		TwentyTwoSegmentDisplayRenderer segOverlay;
+		int rotatingSegments=0;
+
 		// A skybox
 		SkyBox skyBox;
 
@@ -228,14 +232,24 @@ namespace OpenGL.Core.Example1
 			gl.VertexAttribPointer(0, 3, glVertexAttribType.FLOAT, false, 0, 0);
 			#endregion
 
-			skyBox=new SkyBox();
-			skyBox.LoadTextures("Textures\\SkyBox", LoadTextureFromFile);
+			try
+			{
+				skyBox=new SkyBox();
+				skyBox.LoadTextures("Textures\\SkyBox", LoadTextureFromFile);
 
-			skyBox.SetSunModeAndDefaultSunColor(0);
-			skyBox.SetSunPostion(0, (float)-Math.Cos(35*D2R), (float)Math.Sin(35*D2R)); // South 35° above the horizon
+				skyBox.SetSunModeAndDefaultSunColor(0);
+				skyBox.SetSunPostion(0, (float)-Math.Cos(35*D2R), (float)Math.Sin(35*D2R)); // South 35° above the horizon
 
-			//textOverlay=new TextOverlayRenderer(new OpenGLFont("Segoe UI", 30, FontStyle.Regular, new Tuple<ushort, ushort>(32, 126)));
-			textOverlay=new TextOverlayRenderer();
+				//textOverlay=new TextOverlayRenderer(new OpenGLFont("Segoe UI", 30, FontStyle.Regular, new Tuple<ushort, ushort>(32, 126)));
+				textOverlay=new TextOverlayRenderer();
+
+				segOverlay=new TwentyTwoSegmentDisplayRenderer();
+			}
+			catch(Exception ex)
+			{
+				initializationErrorMessage.AddRange(ex.ToString().Split(new char[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries));
+				return false;
+			}
 
 			gl.Enable(glCapability.DEPTH_TEST);
 			gl.ClearDepth(1.0);
@@ -299,7 +313,9 @@ namespace OpenGL.Core.Example1
 			#region Update Projection Matrix
 			if(updateProjectionMatrix)
 			{
-				textOverlay.SetProjectionMatrix(Matrix4d.OrthoMatrix(0, width, 0, height, -10, 10).ToFloatArrayColumnMajor());
+				Matrix4d toMatrix=Matrix4d.OrthoMatrix(0, width, 0, height, -10, 10);
+				textOverlay.SetProjectionMatrix(toMatrix.ToFloatArrayColumnMajor());
+				segOverlay.SetProjectionMatrix(toMatrix.ToFloatArrayColumnMajor());
 
 				double near=0.01, far=10000;
 				double top=near*Math.Tan(45*D2R/2);
@@ -411,14 +427,21 @@ namespace OpenGL.Core.Example1
 			#region Text using absolute screen space coordinates
 			textOverlay.SetColor(0, 0.6f, 0, 1); // green
 
-			textOverlay.DrawText(Text, (int)1, (int)height-1, OpenGLFont.AnchorPlacement.TopLeft); // Draw the text in top left corner
+			textOverlay.DrawText(Text, (int)1, (int)height-1, AnchorPlacement.TopLeft); // Draw the text in top left corner
+
+			segOverlay.SetColor(1f, 0.3f, 0.1f, 0.8f, 0.05f); // orange
+
+			segOverlay.DrawText(Text+" "+(char)(((rotatingSegments++)/50)%8+18)+(char)(((rotatingSegments++)/50)%8+4)+(char)(((rotatingSegments++)/50)%4+12)+(char)(((rotatingSegments++)/50)%4+26), (int)width-1, (int)height-1, AnchorPlacement.TopRight);
+
+			segOverlay.SetColor(1f, 0.2f, 0.5f, 1f, 0.05f); // pink
+			segOverlay.DrawText("Isn't this fun?", (int)width-1, (int)height-1-segOverlay.FontHeight, AnchorPlacement.TopRight);
 			#endregion
 
 			#region Text placed and rotated with modelview martix
 			textOverlay.SetColor(1, 0, 0, 1); // red
 			modelViewMatrix=Matrix4d.TranslationMatrix((int)width/2, (int)height/2, 1)*Matrix4d.RotZMatrix(fRotationAnglePyramid);
 
-			textOverlay.DrawText(Text+" Rotating", modelViewMatrix.ToFloatArrayColumnMajor(), OpenGLFont.AnchorPlacement.Center); // no absolute offsets
+			textOverlay.DrawText(Text+" Rotating", modelViewMatrix.ToFloatArrayColumnMajor(), AnchorPlacement.Center); // no absolute offsets
 			#endregion
 			#endregion
 
@@ -488,6 +511,7 @@ namespace OpenGL.Core.Example1
 
 				skyBox.Delete();
 				textOverlay.Delete();
+				segOverlay.Delete();
 
 				glErrorCode err=gl.GetError();
 				if(err!=glErrorCode.NO_ERROR)
