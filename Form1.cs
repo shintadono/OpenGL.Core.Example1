@@ -70,7 +70,7 @@ namespace OpenGL.Core.Example1
 		TextOverlayRenderer textOverlay;
 
 		// A 22-Segments (16-Segments plus °"':;.,) Renderer
-		TwentyTwoSegmentDisplayRenderer segOverlay;
+		TwentyTwoSegmentDisplayRenderer segOverlayBig, segOverlaySmall;
 		int rotatingSegments=0;
 
 		// A skybox
@@ -243,7 +243,8 @@ namespace OpenGL.Core.Example1
 				//textOverlay=new TextOverlayRenderer(new OpenGLFont("Segoe UI", 30, FontStyle.Regular, new Tuple<ushort, ushort>(32, 126)));
 				textOverlay=new TextOverlayRenderer();
 
-				segOverlay=new TwentyTwoSegmentDisplayRenderer();
+				segOverlayBig=new TwentyTwoSegmentDisplayRenderer();
+				segOverlaySmall=new TwentyTwoSegmentDisplayRenderer(true);
 			}
 			catch(Exception ex)
 			{
@@ -315,7 +316,8 @@ namespace OpenGL.Core.Example1
 			{
 				Matrix4d toMatrix=Matrix4d.OrthoMatrix(0, width, 0, height, -10, 10);
 				textOverlay.SetProjectionMatrix(toMatrix.ToFloatArrayColumnMajor());
-				segOverlay.SetProjectionMatrix(toMatrix.ToFloatArrayColumnMajor());
+				segOverlayBig.SetProjectionMatrix(toMatrix.ToFloatArrayColumnMajor());
+				segOverlaySmall.SetProjectionMatrix(toMatrix.ToFloatArrayColumnMajor());
 
 				double near=0.01, far=10000;
 				double top=near*Math.Tan(45*D2R/2);
@@ -429,12 +431,12 @@ namespace OpenGL.Core.Example1
 
 			textOverlay.DrawText(Text, (int)1, (int)height-1, AnchorPlacement.TopLeft); // Draw the text in top left corner
 
-			segOverlay.SetColor(1f, 0.3f, 0.1f, 0.8f, 0.05f); // orange
+			segOverlayBig.SetColor(1f, 0.3f, 0.1f, 0.8f, 0.05f); // orange
 
-			segOverlay.DrawText(Text+" "+(char)(((rotatingSegments++)/50)%8+18)+(char)(((rotatingSegments++)/50)%8+4)+(char)(((rotatingSegments++)/50)%4+12)+(char)(((rotatingSegments++)/50)%4+26), (int)width-1, (int)height-1, AnchorPlacement.TopRight);
+			segOverlayBig.DrawText(Text+" "+(char)(((rotatingSegments++)/50)%8+18)+(char)(((rotatingSegments++)/50)%8+4)+(char)(((rotatingSegments++)/50)%4+12)+(char)(((rotatingSegments++)/50)%4+26), (int)width-1, (int)height-1, AnchorPlacement.TopRight);
 
-			segOverlay.SetColor(1f, 0.2f, 0.5f, 1f, 0.05f); // pink
-			segOverlay.DrawText("Isn't this fun?", (int)width-1, (int)height-1-segOverlay.FontHeight, AnchorPlacement.TopRight);
+			segOverlaySmall.SetColor(1f, 0.2f, 0.5f, 1f, 0.05f); // pink
+			segOverlaySmall.DrawText("Isn't this fun?", (int)width-1, (int)height-1-segOverlayBig.FontHeight, AnchorPlacement.TopRight);
 			#endregion
 
 			#region Text placed and rotated with modelview martix
@@ -511,7 +513,8 @@ namespace OpenGL.Core.Example1
 
 				skyBox.Delete();
 				textOverlay.Delete();
-				segOverlay.Delete();
+				segOverlayBig.Delete();
+				segOverlaySmall.Delete();
 
 				glErrorCode err=gl.GetError();
 				if(err!=glErrorCode.NO_ERROR)
