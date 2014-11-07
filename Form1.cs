@@ -78,7 +78,7 @@ namespace OpenGL.Core.Example1
 
 		// Names of texture shaders and uniforms
 		ShaderProgram programTextured;
-		int uniformIndexProjectionMatrixTextured, uniformIndexModelViewMatrixTextured, uniformIndexSamplerTextured;
+		int uniformIndexProjectionMatrixTextured, uniformIndexModelViewMatrixTextured, uniformIndexSamplerTextured, uniformIndexLightTextured;
 
 		// Names of OutLine shaders and uniforms
 		ShaderProgram programOutLine;
@@ -116,11 +116,13 @@ namespace OpenGL.Core.Example1
 				uniformIndexProjectionMatrixTextured=programTextured.GetUniformLocation("projectionMatrix");
 				uniformIndexModelViewMatrixTextured=programTextured.GetUniformLocation("modelViewMatrix");
 				uniformIndexSamplerTextured=programTextured.GetUniformLocation("sampler");
+				uniformIndexLightTextured=programTextured.GetUniformLocation("light");
 
 				programTextured.UseProgram();
 
 				// Tell shader which texture unit to use
 				gl.Uniform1i(uniformIndexSamplerTextured, 0);
+				gl.Uniform4f(uniformIndexLightTextured, 1, 1, 1, 1);
 
 				programOutLine=new ShaderProgram(File.ReadAllText("Shaders\\OutLine.vert"), File.ReadAllText("Shaders\\OutLine.frag"));
 				uniformIndexProjectionMatrixOutLine=programOutLine.GetUniformLocation("projectionMatrix");
@@ -345,6 +347,7 @@ namespace OpenGL.Core.Example1
 			cameraMatrix*=Matrix4d.RotZMatrix(-heading);
 			#endregion
 
+			skyBox.SetSunPostion(0, (float)Math.Sin(fRotationAngleCube), (float)Math.Cos(fRotationAngleCube), true);
 			skyBox.Draw(cameraMatrix.ToFloatArrayColumnMajor());
 
 			// Finish camera matrix with translation
@@ -357,6 +360,11 @@ namespace OpenGL.Core.Example1
 			if(showGeom)
 			{
 				programTextured.UseProgram();
+
+				// Set up the lighting from the sun
+				float red, green, blue;
+				skyBox.GetSunLight(out red, out green, out blue);
+				gl.Uniform4f(uniformIndexLightTextured, red, green, blue, 1);
 
 				// Set vertex array object for the next draws
 				gl.BindVertexArray(uiVAO[geomtryVAO]);

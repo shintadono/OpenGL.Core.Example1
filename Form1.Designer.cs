@@ -38,9 +38,9 @@
 			this.openGLControl1.Name = "openGLControl1";
 			this.openGLControl1.Size = new System.Drawing.Size(947, 500);
 			this.openGLControl1.TabIndex = 0;
-			this.openGLControl1.Error += new Win32.WGL.OpenGLControl.ErrorEventHandler(this.openGLControl1_Error);
-			this.openGLControl1.Render += new Win32.WGL.OpenGLControl.RenderEventHandler(this.openGLControl1_Render);
-			this.openGLControl1.Destroy += new Win32.WGL.OpenGLControl.DestroyEventHandler(this.openGLControl1_Destroy);
+			this.openGLControl1.Error += new System.EventHandler<Win32.WGL.OpenGLErrorEventArgs>(this.openGLControl1_Error);
+			this.openGLControl1.Render += new System.EventHandler<System.EventArgs>(this.openGLControl1_Render);
+			this.openGLControl1.Destroy += new System.EventHandler<Win32.WGL.OpenGLDestroyEventArgs>(this.openGLControl1_Destroy);
 			this.openGLControl1.Paint += new System.Windows.Forms.PaintEventHandler(this.openGLControl1_Paint);
 			this.openGLControl1.KeyDown += new System.Windows.Forms.KeyEventHandler(this.openGLControl1_KeyDown);
 			this.openGLControl1.Resize += new System.EventHandler(this.openGLControl1_Resize);
